@@ -556,7 +556,7 @@ class IslandoraSolrResults {
     // As we add additional facets, we're repeatedly URL-encoding old facet
     // strings. when we double-encode quotation marks they're incomprehensible
     // to Solr.
-    $output = str_replace('%2B', '%252B', $output);
+    $output = str_replace('%2B', '%252B', $output) . ' ';
     return $output;
   }
 
