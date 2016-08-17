@@ -162,6 +162,11 @@ class IslandoraSolrResults {
    * @see IslandoraSolrResults::displayResults()
    */
   public function printResults($solr_results) {
+    // Return overridden search results.
+    $call_result = module_invoke_all('islandora_solr_printResults', $solr_results);
+    if (isset($call_result[0])) {
+      return $call_result[0];
+    }
     $solr_results = islandora_solr_prepare_solr_results($solr_results);
     $object_results = $solr_results['response']['objects'];
     $object_results = islandora_solr_prepare_solr_doc($object_results);
