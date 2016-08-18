@@ -449,7 +449,8 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
   $query = array('type' => 'dismax');
 
   $islandora_object = menu_get_object('islandora_object', 2);
-  // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
+  // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.  
+  // This may need to be adjusted - see how URL is formulated to only take one term in the advanced block code.
   $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ? 'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
   $form_state['redirect'] = array(
     $redir_url . "/$search_string",
@@ -703,14 +704,17 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
       );
     }
   }
-
+  $islandora_object = menu_get_object('islandora_object', 2);
+  $is_collection_object_page = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) );
   // Create query.
   $query = '';
   $i = 0;
   foreach ($query_array as $term) {
-    $query .= $term['search'];
-    if (count($query_array) - 1 != $i) {
-      $query .= ' ' . $term['boolean'] . ' ';
+    if (($is_collection_object_page && $i < 1) || (!$is_collection_object_page)) {
+      $query .= $term['search'];
+      if (!$is_collection_object_page && count($query_array) - 1 != $i) {
+        $query .= ' ' . $term['boolean'] . ' ';
+      }
     }
     $i++;
   }
@@ -725,9 +729,8 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
     $filter = isset($_GET['f']) ? $_GET['f'] : '';
   }
 
-  $islandora_object = menu_get_object('islandora_object', 2);
   // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
-  $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ? 'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
+  $redir_url = $is_collection_object_page ? 'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
   // Navigate to results page.
   $form_state['redirect'] = array(
     $redir_url . "/$query",
