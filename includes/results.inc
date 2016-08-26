@@ -550,8 +550,32 @@ class IslandoraSolrResults {
    * @see islandora_solr_block_view()
    */
   public function displayFacets($islandora_solr_query) {
+    global $_islandora_solr_queryclass;
+    $params = isset($_islandora_solr_queryclass->internalSolrParams) ? $_islandora_solr_queryclass->internalSolrParams : array();
     IslandoraSolrFacets::init($islandora_solr_query);
     $output = '';
+    if (isset($params['f']) && count($params['f']) > 1) {
+      // For reset link, only the first filter can remain
+      $filter = '';
+      if (isset($params['f'][0])) {
+        $filter = $params['f'][0];
+        unset($params['f']);
+      }
+      $name_value_pairs = array();
+      foreach ($params as $k => $v) {
+        if (is_array($v)) {
+          error_log('solr params contain more than one element');
+        }
+        else {
+          $name_value_pairs[$k] = $k . '=' . (($v) ? $v : '');
+        }
+      }
+      // Since Drupal has a problem with the link function in creating an indexed variable parameter
+      // $output .= l(t('Reset'), $solr_search_url, array('query' => $name_value_pairs)) . '<br>';
+      $output .= '<a href="/islandora/search/?' . implode("&", $name_value_pairs) . 
+        ($filter ? ((count($name_value_pairs) > 0) ? '&' : '') . 'f[0]=' . $filter : '') . '">Reset</a><br>';
+    }
+
     $facet_order = $this->facetFieldArray;
     foreach ($facet_order as $facet_key => $facet_label) {
       $facet_obj = new IslandoraSolrFacets($facet_key);
