@@ -30,7 +30,6 @@
 function islandora_solr_preprocess_islandora_solr_wrapper(&$variables) {
   global $base_url;
   $variables['base_url'] = $base_url;
-
   $elements = $variables['elements'];
 
   // Make all variables in 'elements' available as variables in the template
