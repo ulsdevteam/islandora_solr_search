@@ -514,7 +514,7 @@ function islandora_solr_truncate_field_display($display_values, $max_length, $ad
 /**
  * Helper function to return the fields that have been configured for the Search Terms selections in the Advanced Search Block
  */
-function _get_solr_setttings_fields($fieldType = 'result_fields') {
+function _get_solr_settings_fields($fieldType = 'result_fields') {
   $results = db_query("SELECT `solr_field`, `solr_field_settings` FROM islandora_solr_fields WHERE field_type = :fieldType ORDER BY `weight`", array(':fieldType' => $fieldType));
   $fields = array();
   foreach ($results as $row) {

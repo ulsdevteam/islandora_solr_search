@@ -1549,7 +1549,7 @@ class IslandoraSolrFacets {
  * Final link composed like: <a href='{attr['href']}' title='{attr['title']}>$value_arr[1]</a>
  */
 function _replace_solr_fieldname_title(&$value_arr, &$attr, &$attr_x) {
-  $search_fields = _get_solr_setttings_fields('search_fields');
+  $search_fields = _get_solr_settings_fields('search_fields');
   foreach ($search_fields as $solr_field => $search_field_settings) {
     $title_field_map[$solr_field] = $search_field_settings['label'];
   }
