@@ -224,6 +224,20 @@ function islandora_solr_get_date_format_fields() {
 }
 
 /**
+ * Return display fields with 'link text text' enabled.
+ */
+function islandora_solr_get_link_text_text_fields() {
+  $records = islandora_solr_get_fields('result_fields', TRUE, FALSE);
+  $link_to_search_fields = array();
+  foreach ($records as $key => $value) {
+    if (isset($value['solr_field_settings']['link_text_text'])) {
+      $link_to_search_fields[$value['solr_field_settings']['link_text_text']] = $value['solr_field'];
+    }
+  }
+  return $link_to_search_fields;
+}
+
+/**
  * Return facet fields with range enabled.
  */
 function islandora_solr_get_range_facets() {

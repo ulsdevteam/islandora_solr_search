@@ -1562,6 +1562,8 @@ function _islandora_solr_handle_solr_field_settings($solr_field_settings = NULL,
         $to_return = array(
           'label' => trim($solr_field_settings['label']),
           'link_rendering' => $solr_field_settings['link_rendering'],
+'link_text' => $solr_field_settings['link_text'],
+'link_text_text' => $solr_field_settings['link_text_text'],
           'snippet' => isset($solr_field_settings['snippet']) ? $solr_field_settings['snippet'] : NULL,
           'date_format' => isset($solr_field_settings['date_format']) ? trim($solr_field_settings['date_format']) : '',
           'truncation_type' => isset($solr_field_settings['truncation_type']) ? trim($solr_field_settings['truncation_type']) : 'separate_value_option',
@@ -1724,6 +1726,7 @@ function islandora_solr_get_admin_permissions_fieldset($permissions, $permission
  */
 function islandora_solr_admin_settings_result_fields($form, &$form_state, $variables) {
   form_load_include($form_state, 'inc', 'islandora_solr', 'includes/admin');
+  module_load_include('inc', 'islandora_solr_metadata', 'includes/db');
 
   $form_state['dialog'] = $variables;
 
@@ -1740,6 +1743,28 @@ function islandora_solr_admin_settings_result_fields($form, &$form_state, $varia
     '#title' => t('Label'),
     '#default_value' => isset($values['label']) ? $values['label'] : '',
     '#description' => t('A human-readable name.'),
+  );
+  $form['options']['link_text'] = array(
+    '#type' => 'radios',
+    '#title' => 'Link Text',
+    '#options' => array(
+      'default' => t('Default field value'),
+      'otherfield' => t('Display alternate field value')
+    ),
+    '#default_value' => (isset($values['link_text']) ? $values['link_text'] : 'default'), //  '', // $get_default(array('link_options', 'link_text'), 'default'),
+  );
+  $form['options']['link_text_options'] = array(
+    '#type' => 'fieldset',
+    '#title' => 'Alternate field value',
+    '#collapsible' => FALSE,
+    'link_text_text' => array(
+      '#type' => 'textfield',
+      '#title' => t('Alternate field value'),
+      '#description' => t('Value from which field to use for link text.'),
+      '#size' => 45,
+      '#autocomplete_path' => 'islandora_solr/autocomplete_luke',
+      '#default_value' => (isset($values['link_text_text']) ? $values['link_text_text'] : ''), //   '', // $get_default(array('link_options', 'link_text_options', 'link_text_text'), ''),
+    ),
   );
   $link_options = array(
     'none' => t('None'),
