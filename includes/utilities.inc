@@ -357,23 +357,19 @@ function islandora_solr_prepare_solr_results($solr_results) {
           $value = array_map($map_to_link, (array) $original_value, (array) $value);
         }
         elseif (in_array($field, $link_to_object)) {
-//          if (count($value) > 1) {
           foreach ($value as $k=>$v) {
             $pid = str_replace('info:fedora/', '', $v);
-            if (in_array($field, $link_text_text)) {
-              $islandora_object = islandora_object_load($pid);
-              $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
+            if ($islandora_object = islandora_object_load($pid)) {
+              if (in_array($field, $link_text_text)) {
+                $islandora_object = islandora_object_load($pid);
+                $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
+                $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+              }
             }
-            $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+            else {
+              $value = l(implode($value), $object_result['object_url'], $options);
+            }
           }
-//          }
-/*          else {
-            $link = '/islandora/object/' . str_replace('info:fedora/', '', $value[0]);
-            $text = $value[0];
-            $value = l($text, $link, $options);
-//            $value = l(implode("<br>", $value), $object_result['object_url'], $options);
-          }
-*/
         }
       }
 
