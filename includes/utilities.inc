@@ -301,6 +301,7 @@ function islandora_solr_prepare_solr_results($solr_results) {
     if (isset($object_result['object_url_fragment'])) {
       $options['fragment'] = $object_result['object_url_fragment'];
     }
+$good = true;
     foreach ($solr_doc as $field => $original_value) {
       $value = (array) $original_value;
       // Date formatting.
@@ -385,7 +386,11 @@ function islandora_solr_prepare_solr_results($solr_results) {
 
       // Implode.
       $value = is_array($value) ? implode(", ", $value) : $value;
-      $solr_doc[$field] = $value;
+      if (!$good) {
+        error_log('end - doc  = ' . print_r($solr_doc, true));
+      } else {
+        $solr_doc[$field] = $value;
+      }
     }
     // Replace Solr doc rows.
     $solr_results['response']['objects'][$object_index]['solr_doc'] = $solr_doc;
