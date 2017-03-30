@@ -558,3 +558,33 @@ function get_solr_field_value_special($pid, $field, $single_result = TRUE) {
   }
   return $value;
 }
+
+/**
+ * Helper function that will return the derived url path alias equivalent of a field value - that is nominally using the
+ * fgs_label_s field.
+ */
+function islandora_solr_custom_path_replacement($target_object_id, $link_target_field, $link_target_pattern) {
+  if (!$link_target_field || (strstr($link_target_pattern, '%1') == '')) {
+    return 'islandora/object/' . $target_object_id;
+  }
+  $field_value = preg_replace('/[^A-Za-z0-9\-]/', '', str_replace(' ', '-', strtolower(trim(_get_SOLR_field_value($target_object_id, $link_target_field)))));
+  return str_replace('%1', $field_value, $link_target_pattern);
+}
+
+/**
+ * Helper function to get a SOLR value for a given PID.
+ */
+function _get_SOLR_field_value($pid, $field) {
+  $query_processor = new IslandoraSolrQueryProcessor();
+  $query_processor->solrQuery = 'PID:"' . $pid . '"';
+  $query_processor->solrParams['fl'] = $field;
+  $query_processor->executeQuery(FALSE);
+  if ($query_processor->islandoraSolrResult['response']['numFound'] > 0) {
+    $solr_results_doc = $query_processor->islandoraSolrResult['response']['objects']['0']['solr_doc'];
+    return (!is_array($solr_results_doc[$field])) ? $solr_results_doc[$field] : $solr_results_doc[$field][0];
+  }
+  else {
+    return false;
+  }
+}
+
