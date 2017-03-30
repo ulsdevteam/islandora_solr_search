@@ -367,7 +367,11 @@ function islandora_solr_prepare_solr_results($solr_results) {
                   $value[$k] = l($v, 'islandora/object/' . $pid, $options);
                 } 
                 else {
-                  unset($value[$k]);
+                  $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+                  // THIS line is needed to remove the collection when it does not relate to the current site, but 
+                  // removing it will cause a "Error searching Solr index "400" Status: Bad Request" for each 
+                  // instance of a search result that no longer has any Collection values remaining.
+                  //   unset($value[$k]);
                 }
               }
             }
