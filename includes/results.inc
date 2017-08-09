@@ -402,6 +402,35 @@ class IslandoraSolrResults {
         $attr_x['rel'] = 'nofollow';
         $attr_x['href'] = url($path, array('query' => $query_x));
 
+        $filter = _fix_spaces_in_parenthesis($filter);
+
+        // Remove solr fields from breadcrumb value.
+        $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $filter);
+        $query_implode = array();
+        foreach ($query_explode as $value) {
+          // Check for first colon to split the string.
+          if (strpos($value, ':') != FALSE) {
+            // Split the filter into field and value.
+
+            $value_split = preg_split(ISLANDORA_SOLR_QUERY_FIELD_VALUE_SPLIT_REGEX, $value, 2);
+            // replace Solr field names with friendly values and for collection objects replace the href
+            _replace_solr_fieldname_title($value_split, $attr, $attr_x);
+
+            // Trim whitespace.
+            $value_split[1] = trim($value_split[1]);
+            // Trim brackets.
+            $value = str_replace(array('(', ')'), '', $value_split[1]);
+          }
+          // No colon is found.
+          else {
+            $value = trim($value);
+            // Strip brackets.
+            $value = str_replace(array('(', ')'), '', $value);
+          }
+          $query_implode[] = $value;
+        }
+        $filter_string = implode(" ", $query_implode);
+
         // XXX: We are not using l() because of active classes:
         // @see http://drupal.org/node/41595
         // Create link.
@@ -443,6 +472,8 @@ class IslandoraSolrResults {
       $attr_x['rel'] = 'nofollow';
       $attr_x['href'] = url($path_x, array('query' => $query_x));
 
+      $query_value = _fix_spaces_in_parenthesis($query_value);
+
       // Remove solr fields from breadcrumb value.
       $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $query_value);
       $query_implode = array();
@@ -451,6 +482,10 @@ class IslandoraSolrResults {
         if (strpos($value, ':') != FALSE) {
           // Split the filter into field and value.
           $value_split = preg_split(ISLANDORA_SOLR_QUERY_FIELD_VALUE_SPLIT_REGEX, $value, 2);
+
+          // replace Solr field names with friendly values and for collection objects replace the href
+          _replace_solr_fieldname_title($value_split, $attr, $attr_x);
+
           // Trim whitespace.
           $value_split[1] = trim($value_split[1]);
           // Trim brackets.
@@ -469,8 +504,11 @@ class IslandoraSolrResults {
       // XXX: We are not using l() because of active classes:
       // @see http://drupal.org/node/41595
       // Create link.
+      // Need to suppress the "x" remove link for collections that use this page.
+      $suppress_remove_link = (strstr($attr['title'], 'Collection:') && !strstr($attr['title'], '*pitt'));
       $breadcrumb[] = '<a' . drupal_attributes($attr) . '>' . stripslashes(check_plain($query_value)) . '</a>'
-            . '<span class="islandora-solr-breadcrumb-super"> <a' . drupal_attributes($attr_x) . '>(' . t('x') . ')</a></span>';
+            . (($suppress_remove_link) ? '' : '<span class="islandora-solr-breadcrumb-super"> <a' . drupal_attributes($attr_x) . '>(' . t('x') . ')</a></span>');
+
     }
 
     $breadcrumb[] = l(t('Home'), '<front>', array('attributes' => array('title' => t('Home'))));
@@ -562,6 +600,8 @@ class IslandoraSolrResults {
    * @see islandora_solr_block_view()
    */
   public function displayFacets($islandora_solr_query) {
+    // not needed? uls_20170911  global $_islandora_solr_queryclass;
+    // not needed? uls_20170911  $params = isset($_islandora_solr_queryclass->internalSolrParams) ? $_islandora_solr_queryclass->internalSolrParams : array();
     IslandoraSolrFacets::init($islandora_solr_query);
     $output = '';
     $facet_order = $this->facetFieldArray;
@@ -1515,3 +1555,75 @@ class IslandoraSolrFacets {
     return $results['response']['objects'][0]['solr_doc'][$field];
   }
 }
+
+/**
+ * Helper function to replace Solr fieldnames with a friendly name.
+ * Used in setBreadcrumbs().  For a collection, will also replace alias for the source path.
+ * 
+ * The rendered breadcrumb is made from the values derived here:
+ *   attr['href'], attr['title'] pertain to the breadcrumb while
+ *   attr_x['href'], attr_x['title'] pertain to the "Remove (this breadcrumb)" links.
+ *
+ * Final link composed like: <a href='{attr['href']}' title='{attr['title']}>$value_arr[1]</a>
+ */
+function _replace_solr_fieldname_title(&$value_arr, &$attr, &$attr_x) {
+  $search_fields = _get_solr_setttings_fields('search_fields');
+  foreach ($search_fields as $solr_field => $search_field_settings) {
+    $title_field_map[$solr_field] = $search_field_settings['label'];
+  }
+  // Must also handle mapping for various fields which are defined by their facet configuration.
+  $title_field_map = array_merge($title_field_map, 
+    array('RELS_EXT_isMemberOfCollection_uri_ms' => 'Collection',
+      'fgs_label_s' => 'Title',
+      'PID' => 'Identifier',
+      'mods_relatedItem_host_titleInfo_title_ms' => 'Source',
+      'mods_typeOfResource_ms' => 'Type',
+      'mods_name_creator_namePart_ms' => 'Creator',
+    ));
+
+  $field_title = '';
+  @list($tmp_title, $junk) = explode("?", $value_arr[0]);
+  $tmp_title = urldecode($tmp_title);
+  // urldecode and replace escape characters (that were encoded via a solr query)
+  $value_arr[1] = htmlspecialchars_decode(str_replace("\\", "", urldecode($value_arr[1])));
+
+  if (isset($title_field_map[$value_arr[0]])) {
+    $field_title = $title_field_map[$value_arr[0]];
+    $attr['title'] = $field_title . ': ' . $value_arr[1];
+    $attr_x['title'] = t('Remove') . ' ' . $field_title . ': ' . $value_arr[1];
+  }
+  // incoming value like "info\\:fedora/pitt\\:collection.68"
+  if (strstr($value_arr[1], ':collection.')) {
+    $tmp_source = stripslashes($value_arr[1]);
+    @list($junk, $pid) = explode("/", $tmp_source);
+    if ($pid) {
+      $result = db_query('SELECT alias FROM {url_alias} WHERE source like :source LIMIT 1', array(':source' => '%' . $pid));
+      foreach ($result as $record) {
+        $attr['href'] = '/' . $record->alias;
+        $attr_x['href'] = '/' . $record->alias;
+      }
+    }
+  
+    $islandora_object = islandora_object_load($pid);
+    if (is_object($islandora_object)) {
+      $collection_name = _get_solr_field_value_special($islandora_object, 'fgs_label_s');
+      $value_arr[1] = $collection_name;
+      if ($field_title) {
+        $attr['title'] = $field_title . ': ' . $collection_name;
+      }
+    }
+  }
+}
+
+function _fix_spaces_in_parenthesis($filter) {
+  // If filter contains a term that contains a space, replace with "+"
+  $parenthesis_lpos = strpos($filter, "(");
+  $parenthesis_rpos = strpos($filter, ")");
+  if ($parenthesis_lpos > 0 && $parenthesis_lpos < $parenthesis_rpos) {
+    $filter = substr($filter, 0, $parenthesis_lpos) .
+      str_replace(" ", "+", substr($filter, $parenthesis_lpos, $parenthesis_rpos - 1)) .
+      substr($filter, $parenthesis_rpos + 1);
+  }
+  return $filter;
+}
+

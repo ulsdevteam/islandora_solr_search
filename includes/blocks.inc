@@ -459,7 +459,7 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
   // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
   // This may need to be adjusted - see how URL is formulated to only take one term in the advanced block code.
   $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ?
-    'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
+    'islandora/object/' . $islandora_object->id . '/search_collection' : ISLANDORA_SOLR_SEARCH_PATH;
   $form_state['redirect'] = array(
     $redir_url . "/$search_string",
     array(
@@ -512,17 +512,33 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
   // 2: Populate with current query on search results page.
   elseif (islandora_solr_results_page($_islandora_solr_queryclass) == TRUE && !isset($_islandora_solr_queryclass->internalSolrParams['type'])) {
 
-    // Get current query.
-    $query = $_islandora_solr_queryclass->solrQuery;
-
     $values['terms'] = array();
 
+    // First check for _GET params that match a possible search field.
+    $solr_search_fields = _get_solr_setttings_fields('search_fields');
+    $i = 0;
+    $get_filter_params = isset($_GET['f']) ? $_GET['f'] : array();
+
+    $added = array();
+    foreach ($get_filter_params as $get_filter_param) {
+      $colon_pos = strpos($get_filter_param, ":");
+      $param = stripslashes(substr($get_filter_param, 0, $colon_pos));
+      $value = str_replace(array('"', ')', '('), '', substr($get_filter_param, $colon_pos + 1));
+      if (array_key_exists($param, $solr_search_fields) && array_search($param . ':' . $value, $added) === FALSE) {
+        $values['terms'][$i]['field'] = $param;
+        $values['terms'][$i]['search'] = $value;
+        $values['terms'][$i]['boolean'] = 'AND';
+        $added[] = $param . ':' . $value;
+        $i++;
+      }
+    }
+
+    // Get current query.
+    $query = $_islandora_solr_queryclass->solrQuery;
     $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $query);
 
-    // Break up the solr query to populate the advanced search form.
-    $i = 0;
+    // Now, break up the solr query to populate the advanced search form with any remaining matches.
     foreach ($query_explode as $key => $value) {
-      $term = array();
 
       // Check for first colon to split the string.
       if (strpos($value, ':') != FALSE) {
@@ -731,28 +747,26 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
 
   $islandora_object = menu_get_object('islandora_object', 2);
   $is_collection_object_page = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) );
+  // Upitt - must combine _GET and _POST parameters here..
+  $query_params = drupal_get_query_parameters();
+  $faceted_filters = (isset($query_params['f']) ? $query_params['f'] : array());
+
   // Create query.
   $query = '';
   $i = 0;
   foreach ($query_array as $term) {
-    if (($is_collection_object_page && $i < 1) || (!$is_collection_object_page)) {
-      $query .= $term['search'];
-      if (!$is_collection_object_page && count($query_array) - 1 != $i) {
-        $query .= ' ' . $term['boolean'] . ' ';
-      }
-    }
+    $faceted_filters[] = $term['search'];
     $i++;
   }
-
   // Check if query is empty.
-  if (empty($query)) {
-    if (variable_get('islandora_solr_base_advanced', FALSE)) {
-      $query = variable_get('islandora_solr_base_query', '*:*');
-    }
-    else {
-      $query = '*:*';
-    }
-  }
+//  if (empty($query)) {
+//    if (variable_get('islandora_solr_base_advanced', FALSE)) {
+//      $query = variable_get('islandora_solr_base_query', '*:*');
+//    }
+//    else {
+//      $query = '*:*';
+//    }
+//  }
 
   // Handle filters.
   $filter = '';
@@ -760,15 +774,31 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
     $filter = isset($_GET['f']) ? $_GET['f'] : '';
   }
 
+  $facet_index = 0;
+  $filters = array();
+  if ($filter) {
+    if (is_array($filter)) {
+      $filters = $filter;
+    }
+    else {
+      $filters[] = $filter;
+    }
+  }
+
+  $filters = array_merge($filters, $faceted_filters);
+
   // Use work around for some special URL characters.
   $query = islandora_solr_replace_slashes($query);
 
   // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
-  $redir_url = $is_collection_object_page ? 'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
+  list($this_uri, $junk) = explode('?', $_SERVER['REQUEST_URI']);
+  $redir_url = $is_collection_object_page ? (rtrim($this_uri, '/') ? : 'islandora/object/' . $islandora_object->id . '/search_collection') : ISLANDORA_SOLR_SEARCH_PATH;
+
   // Navigate to results page.
   $form_state['redirect'] = array(
     $redir_url . "/$query",
-    $filter ? array('query' => array('f' => $filter)) : array(),
+    array('query' => array('f' => $filters,
+                           'islandora_solr_search_navigation' => 0)),
   );
 }
 

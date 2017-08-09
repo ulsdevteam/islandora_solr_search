@@ -382,8 +382,16 @@ function islandora_solr_prepare_solr_results($solr_results) {
           'url' => $object_result['object_url'],
           'options' => $options,
         );
-        $value = islandora_solr_truncate_field_display($value, $truncate_length[$field]['maximum_length'], $truncate_length[$field]['add_ellipsis'], $truncate_length[$field]['wordsafe'], $truncate_length[$field]['wordsafe_length'], $separator, $link_options);
-      }
+        // Handle linking and truncating together.
+        $link_options = array(
+          'link_to_object' => in_array($field, $link_to_object),
+          'link_to_search' => in_array($field, $link_to_search),
+          'field' => $field,
+          'url' => $object_result['object_url'],
+          'options' => $options,
+        );
+        $value = islandora_solr_truncate_field_display($value, $truncate_length[$field]['maximum_length'], $truncate_length[$field]['add_ellipsis'], $truncate_length[$field]['wordsafe'], $truncate_length[$field]['wordsafe_length'], "<br />", $link_options);
+        }
       else {
         // Add link to search.
         if (in_array($field, $link_to_search)) {
@@ -392,14 +400,22 @@ function islandora_solr_prepare_solr_results($solr_results) {
               '!field' => $field,
               '!value' => islandora_solr_lesser_escape($original_value),
             ));
-            return l($formatted_value, "islandora/search/$solr_query", array(
+            return l($formatted_value, "islandora/search/" . islandora_solr_replace_slashes($solr_query), array(
               'html' => TRUE,
             ));
           };
           $value = array_map($map_to_link, (array) $original_value, (array) $value);
         }
         elseif (in_array($field, $link_to_object)) {
-          $value = l(implode($separator, $value), $object_result['object_url'], $options);
+          if (count($value) > 1) {
+            foreach ($value as $k=>$v) {
+              $pid = str_replace('info:fedora/', '', $v);
+              $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+            }
+          }
+          else {
+            $value = l(implode("<br>", $value), $object_result['object_url'], $options);
+          }
         }
       }
       // Implode.
@@ -546,12 +562,14 @@ function islandora_solr_truncate_field_display($display_values, $max_length, $ad
 
     $updated_display_values
       = "<span class='toggle-wrapper'>" .
-      t("<span>!value <br />!show_more</span>", array(
+      t("<span>!value !separator !show_more</span>", array(
+        '!separator' => $separator,
         '!value' => $truncated_value,
         '!show_more' => ($value_is_truncated ? "<a href='#' class='toggler'>Show more</a>" : ""),
       ));
     if ($value_is_truncated) {
-      $updated_display_values .= t("<span>!original_value <br /><a href='#' class='toggler'>Show less</a></span>", array(
+      $updated_display_values .= t("<span>!original_value !separator<a href='#' class='toggler'>Show less</a></span>", array(
+        '!separator' => $separator,
         '!original_value' => $original_value,
       ));
     }
@@ -633,6 +651,21 @@ function islandora_solr_get_filter_tags() {
  * Helper function to return the fields that have been configured for the Search Terms selections in the Advanced Search Block
  */
 function _get_solr_settings_fields($fieldType = 'result_fields') {
+  $results = db_query("SELECT `solr_field`, `solr_field_settings` FROM islandora_solr_fields WHERE field_type = :fieldType ORDER BY `weight`", array(':fieldType' => $fieldType));
+  $fields = array();
+  foreach ($results as $row) {
+    $settings = unserialize($row->solr_field_settings);
+    $fields[$row->solr_field] = array('label' => $settings['label'],
+                                      'class' => $row->solr_field);
+  }
+  return $fields;
+}
+
+
+/**
+ * Helper function to return the fields that have been configured for the Search Terms selections in the Advanced Search Block
+ */
+function _get_solr_setttings_fields($fieldType = 'result_fields') {
   $results = db_query("SELECT `solr_field`, `solr_field_settings` FROM islandora_solr_fields WHERE field_type = :fieldType ORDER BY `weight`", array(':fieldType' => $fieldType));
   $fields = array();
   foreach ($results as $row) {
