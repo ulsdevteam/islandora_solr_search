@@ -289,7 +289,9 @@ function islandora_solr($query = NULL, $params = NULL) {
   else {
     $islandora_solr_primary_display = variable_get('islandora_solr_primary_display', 'default');
     // Unset invalid parameter.
-    unset($params['display']);
+    if (isset($params['display'])) {
+      unset($params['display']);
+    }
   }
   $params['islandora_solr_search_navigation'] = variable_get('islandora_solr_search_navigation', FALSE);
 
