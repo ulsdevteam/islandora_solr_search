@@ -306,10 +306,12 @@ function islandora_solr_prepare_solr_results($solr_results) {
   $highlighting = isset($solr_results['highlighting']) ? $solr_results['highlighting'] : array();
   $fields_all = islandora_solr_get_fields('result_fields', FALSE);
   $link_to_object = islandora_solr_get_link_to_object_fields();
-  $truncate_length = islandora_solr_get_truncate_length_fields();
   $link_to_search = islandora_solr_get_link_to_search_fields();
+  $link_pathauto = islandora_solr_get_link_pathauto_fields();
+  $truncate_length = islandora_solr_get_truncate_length_fields();
+  $link_text = islandora_solr_get_link_text_fields();
   $link_text_text = islandora_solr_get_link_text_text_fields();
-
+  $link_pathauto_source_pattern = islandora_solr_get_link_pathauto_source_pattern_fields();
   $date_format = islandora_solr_get_date_format_fields();
 
   // Loop over object results.
@@ -327,7 +329,7 @@ function islandora_solr_prepare_solr_results($solr_results) {
     if (isset($object_result['object_url_fragment'])) {
       $options['fragment'] = $object_result['object_url_fragment'];
     }
-
+    $good = TRUE;
     foreach ($solr_doc as $field => $original_value) {
       $value = (array) $original_value;
 
@@ -380,23 +382,41 @@ function islandora_solr_prepare_solr_results($solr_results) {
         $link_options = array(
           'link_to_object' => in_array($field, $link_to_object),
           'link_to_search' => in_array($field, $link_to_search),
-          'field' => $field,
-          'url' => $object_result['object_url'],
-          'options' => $options,
-        );
-        // Handle linking and truncating together.
-        $link_options = array(
-          'link_to_object' => in_array($field, $link_to_object),
-          'link_to_search' => in_array($field, $link_to_search),
+          'link_pathauto' => in_array($field, $link_pathauto),
           'field' => $field,
           'url' => $object_result['object_url'],
           'options' => $options,
         );
         $value = islandora_solr_truncate_field_display($value, $truncate_length[$field]['maximum_length'], $truncate_length[$field]['add_ellipsis'], $truncate_length[$field]['wordsafe'], $truncate_length[$field]['wordsafe_length'], "<br />", $link_options);
-        }
+      }
       else {
+        $use_text = (array) $value;
+        $this_link_text = (array_key_exists($field, $link_text) ? $link_text[$field] : 'default');
+        $link_text_field = ($this_link_text == 'otherfield' &&
+          (array_key_exists($field, $link_text_text))) ? $link_text_text[$field] : '';
+        $has_link = (array_key_exists($field, $link_to_object) || array_key_exists($field, $link_to_search) || array_key_exists($field, $link_pathauto));
+        if ($this_link_text <> 'default' || !$has_link) {
+          foreach ($value as $idx => $single_value) {
+            $full_result_pid = $single_value;
+            $pid_result = str_replace('info:fedora/', '', $full_result_pid);
+
+            if ($link_text_field) {
+              $use_text[$idx] = _get_SOLR_field_value($pid_result, $link_text_field);
+            }
+            if (array_key_exists($field, $link_text) && $link_text[$field] == 'pid_object_label') {
+              if ($tmp_object = islandora_object_load($pid_result)) {
+                $use_text[$idx] = $tmp_object->label;
+              }
+            }
+          }
+          $value = $use_text;
+        }
+        else {
+          $value = (array) $use_text;
+        }
+
         // Add link to search.
-        if (in_array($field, $link_to_search)) {
+        if (!(array_search($field, $link_to_search) === FALSE)) {
           $map_to_link = function ($original_value, $formatted_value) use ($field) {
             $solr_query = format_string('!field:"!value"', array(
               '!field' => $field,
@@ -408,29 +428,14 @@ function islandora_solr_prepare_solr_results($solr_results) {
           };
           $value = array_map($map_to_link, (array) $original_value, (array) $value);
         }
-        elseif (in_array($field, $link_to_object)) {
-          foreach ($value as $k=>$v) {
-            $pid = str_replace('info:fedora/', '', $v);
-            if ($islandora_object = islandora_object_load($pid)) {
-              if (in_array($field, $link_text_text)) {
-                $islandora_object = islandora_object_load($pid);
-                $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
-                if ($v) {
-                  $value[$k] = l($v, 'islandora/object/' . $pid, $options);
-                } 
-                else {
-                  $value[$k] = l($v, 'islandora/object/' . $pid, $options);
-                  // THIS line is needed to remove the collection when it does not relate to the current site, but 
-                  // removing it will cause a "Error searching Solr index "400" Status: Bad Request" for each 
-                  // instance of a search result that no longer has any Collection values remaining.
-                  //   unset($value[$k]);
-                }
-              }
-            }
-            else {
-              $text = (is_array($value) ? implode($value) : $value);
-              $value = l($text, $object_result['object_url'], $options);
-            }
+        elseif (!(array_search($field, $link_to_object) === FALSE)) {
+          $value = l($use_text[0], $object_result['object_url'], $options);
+        }
+        elseif (!(array_search($field, $link_pathauto) === FALSE)) {
+          $this_field_pathauto_pattern = array_search($field, $link_pathauto_source_pattern);
+          foreach ($use_text as $idx => $text) {
+            $pid_result = str_replace('info:fedora/', '', $original_value[$idx]);
+            $value[$idx] = l($text, $this_field_pathauto_pattern . $pid_result, $options);
           }
         }
       }
@@ -715,6 +720,7 @@ function islandora_solr_custom_path_replacement($target_object_id, $link_target_
  * Helper function to get a SOLR value for a given PID.
  */
 function _get_SOLR_field_value($pid, $field) {
+  $pid = (strstr($pid, ":")) ? str_replace(":", "\:", $pid) : $pid;
   $query_processor = new IslandoraSolrQueryProcessor();
   $query_processor->solrQuery = 'PID:"' . $pid . '"';
   $query_processor->solrParams['fl'] = $field;

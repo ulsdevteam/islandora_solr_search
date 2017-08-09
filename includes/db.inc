@@ -167,6 +167,20 @@ function islandora_solr_get_link_to_object_fields() {
 }
 
 /**
+ * Return display fields with 'link pathauto' enabled.
+ */
+function islandora_solr_get_link_pathauto_fields() {
+  $records = islandora_solr_get_fields('result_fields', TRUE, FALSE);
+  $link_pathauto_fields = array();
+  foreach ($records as $key => $value) {
+    if (isset($value['solr_field_settings']['link_pathauto']) && $value['solr_field_settings']['link_pathauto'] == 1) {
+      $link_pathauto_fields[] = $value['solr_field'];
+    }
+  }
+  return $link_pathauto_fields;
+}
+
+/**
  * Return display fields that have a length limit set.
  *
  * Returns an associative array with field names as key and truncation
@@ -226,15 +240,43 @@ function islandora_solr_get_date_format_fields() {
 /**
  * Return display fields with 'link text text' enabled.
  */
+function islandora_solr_get_link_text_fields() {
+  $records = islandora_solr_get_fields('result_fields', TRUE, FALSE);
+  $link_to_search_fields = array();
+  foreach ($records as $key => $value) {
+    if (isset($value['solr_field_settings']['link_text']) && trim($value['solr_field_settings']['link_text'])) {
+      $link_to_search_fields[$value['solr_field']] = $value['solr_field_settings']['link_text'];
+    }
+  }
+  return $link_to_search_fields;
+}
+
+/**
+ * Return display fields with 'link text text' enabled.
+ */
 function islandora_solr_get_link_text_text_fields() {
   $records = islandora_solr_get_fields('result_fields', TRUE, FALSE);
   $link_to_search_fields = array();
   foreach ($records as $key => $value) {
-    if (isset($value['solr_field_settings']['link_text_text'])) {
+    if (isset($value['solr_field_settings']['link_text_text']) && trim($value['solr_field_settings']['link_text_text'])) {
       $link_to_search_fields[$value['solr_field']] = $value['solr_field_settings']['link_text_text'];
     }
   }
   return $link_to_search_fields;
+}
+
+/**
+ * Return display fields with 'link text text' enabled.
+ */
+function islandora_solr_get_link_pathauto_source_pattern_fields() {
+  $records = islandora_solr_get_fields('result_fields', TRUE, FALSE);
+  $link_pathauto_source_pattern = array();
+  foreach ($records as $key => $value) {
+    if (isset($value['solr_field_settings']['link_pathauto_source_pattern']) && trim($value['solr_field_settings']['link_pathauto_source_pattern'])) {
+      $link_pathauto_source_pattern[$value['solr_field_settings']['link_pathauto_source_pattern']] = $value['solr_field'];
+    }
+  }
+  return $link_pathauto_source_pattern;
 }
 
 /**

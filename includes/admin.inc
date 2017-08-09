@@ -1683,6 +1683,7 @@ function _islandora_solr_handle_solr_field_settings($solr_field_settings = NULL,
           'link_rendering' => $solr_field_settings['link_rendering'],
           'link_text' => $solr_field_settings['link_text'],
           'link_text_text' => $solr_field_settings['link_text_text'],
+          'link_pathauto_source_pattern' => $solr_field_settings['link_pathauto_source_pattern'],
           'snippet' => isset($solr_field_settings['snippet']) ? $solr_field_settings['snippet'] : NULL,
           'date_format' => isset($solr_field_settings['date_format']) ? trim($solr_field_settings['date_format']) : '',
           'truncation_type' => isset($solr_field_settings['truncation_type']) ? trim($solr_field_settings['truncation_type']) : 'separate_value_option',
@@ -1868,7 +1869,8 @@ function islandora_solr_admin_settings_result_fields($form, &$form_state, $varia
     '#title' => 'Link Text',
     '#options' => array(
       'default' => t('Default field value'),
-      'otherfield' => t('Display alternate field value')
+      'pid_object_label' => t('Replace PID with Object Label'),
+      'otherfield' => t('Display alternate field value'),
     ),
     '#default_value' => (isset($values['link_text']) ? $values['link_text'] : 'default'), //  '', // $get_default(array('link_options', 'link_text'), 'default'),
   );
@@ -1889,6 +1891,7 @@ function islandora_solr_admin_settings_result_fields($form, &$form_state, $varia
     'none' => t('None'),
     'object' => t("Link this field to the object's page."),
     'search' => t("Link the value to a Solr search result. (NOTE: Will likely break with very large values.)"),
+    'pathauto' => t("Custom pathauto alias based on object PID."),
   );
   $default_link = 'none';
 
@@ -1901,12 +1904,30 @@ function islandora_solr_admin_settings_result_fields($form, &$form_state, $varia
   elseif (isset($values['link_to_search']) && $values['link_to_search'] != FALSE) {
     $default_link = 'search';
   }
+  elseif (isset($values['link_pathauto']) && $values['link_pathauto'] != FALSE) {
+    $default_link = 'pathauto';
+  }
+
   $form['options']['link_rendering'] = array(
     '#type' => 'radios',
     '#title' => t('Linking'),
     '#options' => $link_options,
     '#default_value' => $default_link,
   );
+  $form['options']['link_target_options'] = array(
+      '#type' => 'fieldset',
+      '#title' => 'Pathauto `source` pattern',
+      '#collapsible' => FALSE,
+      'link_pathauto_source_pattern' => array(
+        '#type' => 'textfield',
+        '#description' => t('The `source` pattern for any pathauto record based on an object.  This could be ' .
+          'a nonstandard menu route such as <code>islandora/search_collection/{PID}</code>. ' .
+          'Finally, <code>islandora/search_collection/{PID}</code> would be supplied as <code>islandora/search_collection/</code>' .
+          ' - do not include the {PID} value part.'),
+        '#size' => 45,
+        '#default_value' => (isset($values['link_pathauto_source_pattern']) ? $values['link_pathauto_source_pattern'] : ''),
+      ),
+    );
   $form['options']['snippet'] = array(
     '#type' => 'checkbox',
     '#title' => t('Highlight'),
