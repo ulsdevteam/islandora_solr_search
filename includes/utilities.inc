@@ -419,7 +419,8 @@ function islandora_solr_prepare_solr_results($solr_results) {
               }
             }
             else {
-              $value = l(implode($value), $object_result['object_url'], $options);
+              $text = (is_array($value) ? implode($value) : $value);
+              $value = l($text, $object_result['object_url'], $options);
             }
           }
         }
