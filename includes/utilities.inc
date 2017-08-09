@@ -411,11 +411,16 @@ function islandora_solr_prepare_solr_results($solr_results) {
         elseif (in_array($field, $link_to_object)) {
           foreach ($value as $k=>$v) {
             $pid = str_replace('info:fedora/', '', $v);
-            if (in_array($field, $link_text_text)) {
-              $islandora_object = islandora_object_load($pid);
-              $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
+            if ($islandora_object = islandora_object_load($pid)) {
+              if (in_array($field, $link_text_text)) {
+                $islandora_object = islandora_object_load($pid);
+                $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
+                $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+              }
             }
-            $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+            else {
+              $value = l(implode($value), $object_result['object_url'], $options);
+            }
           }
         }
       }
