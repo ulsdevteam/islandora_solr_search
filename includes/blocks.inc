@@ -455,9 +455,12 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
   $search_string = islandora_solr_replace_slashes($form_state['values']['islandora_simple_search_query']);
 
   $query = array('type' => 'dismax');
-
+  $islandora_object = menu_get_object('islandora_object', 2);
+  // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
+  $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ?
+    'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
   $form_state['redirect'] = array(
-    ISLANDORA_SOLR_SEARCH_PATH . "/$search_string",
+    $redir_url . "/$search_string",
     array(
       'query' => $query,
     ),
@@ -755,9 +758,13 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
   // Use work around for some special URL characters.
   $query = islandora_solr_replace_slashes($query);
 
+  $islandora_object = menu_get_object('islandora_object', 2);
+  // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
+  $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ?
+    'islandora/object/' . $islandora_object->id . '/searching_collection' : ISLANDORA_SOLR_SEARCH_PATH;
   // Navigate to results page.
   $form_state['redirect'] = array(
-    ISLANDORA_SOLR_SEARCH_PATH . "/$query",
+    $redir_url . "/$query",
     $filter ? array('query' => array('f' => $filter)) : array(),
   );
 }
