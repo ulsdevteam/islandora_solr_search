@@ -584,7 +584,7 @@ function islandora_solr_truncate_field_display($display_values, $max_length, $ad
 
   }
   return $updated_display_values;
-};
+}
 
 /**
  * Check the field type against the user-specified list of date field types.
@@ -690,3 +690,34 @@ function get_solr_field_value_special($pid, $field, $single_result = TRUE) {
   return $value;
 }
 
+/**
+ * Helper function to derive the site value from the islandora_solr_base_filter value.  Does not handle more than
+ * one site value in the base filter.
+ */
+function _get_site_from_config() {
+  $base_filter = variable_get('islandora_solr_base_filter');
+  // look for the value for RELS_EXT_isMemberOfSite_uri_ms
+  $and_filters = explode(" AND ", $base_filter);
+  $final_filters = array();
+  foreach ($and_filters as $exploded) {
+    $nl_exploded = explode("\r\n", $exploded);
+    if (is_array($nl_exploded)) {
+      foreach ($nl_exploded as $nl_element) {
+        $final_filters[] = trim($nl_element);
+      }
+    }
+    else {
+      $final_filters[] = $nl_exploded;
+    }
+  }
+  $found_filter = '';
+  foreach ($final_filters as $filter) {
+    if (strstr($filter, 'RELS_EXT_isMemberOfSite_uri_ms') <> '') {
+      $found_filter = $filter;
+    }
+  }
+  if ($found_filter) {
+    $site = stripslashes(str_replace(array('"', 'RELS_EXT_isMemberOfSite_uri_ms:'), '', $found_filter));
+    return $site;
+  }
+}
