@@ -746,46 +746,32 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
   }
 
   $islandora_object = menu_get_object('islandora_object', 2);
-  $is_collection_object_page = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) );
-  // Upitt - must combine _GET and _POST parameters here..
-  $query_params = drupal_get_query_parameters();
-  $faceted_filters = (isset($query_params['f']) ? $query_params['f'] : array());
 
   // Create query.
   $query = '';
   $i = 0;
   foreach ($query_array as $term) {
-    $faceted_filters[] = $term['search'];
+   $query .= $term['search'];
+    if (count($query_array) - 1 != $i) {
+      $query .= ' ' . $term['boolean'] . ' ';
+    }
     $i++;
   }
   // Check if query is empty.
-//  if (empty($query)) {
-//    if (variable_get('islandora_solr_base_advanced', FALSE)) {
-//      $query = variable_get('islandora_solr_base_query', '*:*');
-//    }
-//    else {
-//      $query = '*:*';
-//    }
-//  }
+  if (empty($query)) {
+    if (variable_get('islandora_solr_base_advanced', FALSE)) {
+      $query = variable_get('islandora_solr_base_query', '*:*');
+    }
+    else {
+      $query = '*:*';
+    }
+  }
 
   // Handle filters.
   $filter = '';
   if (isset($form_state['values']['islandora_solr_allow_preserve_filters']) && $form_state['values']['islandora_solr_allow_preserve_filters']) {
     $filter = isset($_GET['f']) ? $_GET['f'] : '';
   }
-
-  $facet_index = 0;
-  $filters = array();
-  if ($filter) {
-    if (is_array($filter)) {
-      $filters = $filter;
-    }
-    else {
-      $filters[] = $filter;
-    }
-  }
-
-  $filters = array_merge($filters, $faceted_filters);
 
   // Use work around for some special URL characters.
   $query = islandora_solr_replace_slashes($query);
@@ -797,7 +783,7 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
   // Navigate to results page.
   $form_state['redirect'] = array(
     $redir_url . "/$query",
-    array('query' => array('f' => $filters,
+    array('query' => array('f' => $filter,
                            'islandora_solr_search_navigation' => 0)),
   );
 }
