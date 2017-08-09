@@ -430,7 +430,7 @@ function islandora_solr_simple_search_form($form, &$form_state) {
   $form['simple']["islandora_simple_search_query"] = array(
     '#size' => '15',
     '#type' => 'textfield',
-    '#title' => t("Search Term"),
+    '#title' => t(""),
     // @todo Should this be the searched value?
     '#default_value' => '',
   );
