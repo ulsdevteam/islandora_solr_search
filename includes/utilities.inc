@@ -308,6 +308,8 @@ function islandora_solr_prepare_solr_results($solr_results) {
   $link_to_object = islandora_solr_get_link_to_object_fields();
   $truncate_length = islandora_solr_get_truncate_length_fields();
   $link_to_search = islandora_solr_get_link_to_search_fields();
+  $link_text_text = islandora_solr_get_link_text_text_fields();
+
   $date_format = islandora_solr_get_date_format_fields();
 
   // Loop over object results.
@@ -407,14 +409,13 @@ function islandora_solr_prepare_solr_results($solr_results) {
           $value = array_map($map_to_link, (array) $original_value, (array) $value);
         }
         elseif (in_array($field, $link_to_object)) {
-          if (count($value) > 1) {
-            foreach ($value as $k=>$v) {
-              $pid = str_replace('info:fedora/', '', $v);
-              $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+          foreach ($value as $k=>$v) {
+            $pid = str_replace('info:fedora/', '', $v);
+            if (in_array($field, $link_text_text)) {
+              $islandora_object = islandora_object_load($pid);
+              $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
             }
-          }
-          else {
-            $value = l(implode("<br>", $value), $object_result['object_url'], $options);
+            $value[$k] = l($v, 'islandora/object/' . $pid, $options);
           }
         }
       }
@@ -660,3 +661,26 @@ function _get_solr_settings_fields($fieldType = 'result_fields') {
   }
   return $fields;
 }
+
+/**
+ * Helper function to lookup any solr field value for an islandora_object.
+ */
+function get_solr_field_value_special($pid, $field, $single_result = TRUE) {
+  $value = NULL;
+  $query_processor = new IslandoraSolrQueryProcessor();
+  $query_processor->solrQuery = 'PID:' . str_replace(":", "\:", $pid);
+  $query_processor->solrStart = 0;
+  $query_processor->solrLimit = 1;
+  $query_processor->solrParams = array(
+    'fl' => $field,
+    'fq' => '',
+  );
+  $query_processor->executeQuery(FALSE);
+  if ($query_processor->islandoraSolrResult['response']['numFound'] > 0) {
+    $solr_results_doc = $query_processor->islandoraSolrResult['response']['objects']['0']['solr_doc'];
+    $value = (isset($solr_results_doc[$field]) && is_array($solr_results_doc[$field])) ? (($single_result) ? $solr_results_doc[$field][0] : implode("<br>", $solr_results_doc[$field])) :
+      (isset($solr_results_doc[$field]) ? $solr_results_doc[$field] : '');
+  }
+  return $value;
+}
+
