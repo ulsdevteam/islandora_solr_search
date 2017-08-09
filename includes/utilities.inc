@@ -415,7 +415,12 @@ function islandora_solr_prepare_solr_results($solr_results) {
               if (in_array($field, $link_text_text)) {
                 $islandora_object = islandora_object_load($pid);
                 $v = get_solr_field_value_special($pid, array_search($field, $link_text_text), TRUE);
-                $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+                if ($v) {
+                  $value[$k] = l($v, 'islandora/object/' . $pid, $options);
+                } 
+                else {
+                  unset($value[$k]);
+                }
               }
             }
             else {
@@ -679,7 +684,7 @@ function get_solr_field_value_special($pid, $field, $single_result = TRUE) {
   $query_processor->solrLimit = 1;
   $query_processor->solrParams = array(
     'fl' => $field,
-    'fq' => '',
+    'fq' => variable_get('islandora_solr_base_filter', ''),
   );
   $query_processor->executeQuery(FALSE);
   if ($query_processor->islandoraSolrResult['response']['numFound'] > 0) {
