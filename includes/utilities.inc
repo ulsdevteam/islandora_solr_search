@@ -660,19 +660,3 @@ function _get_solr_settings_fields($fieldType = 'result_fields') {
   }
   return $fields;
 }
-
-
-/**
- * Helper function to return the fields that have been configured for the Search Terms selections in the Advanced Search Block
- */
-function _get_solr_setttings_fields($fieldType = 'result_fields') {
-  $results = db_query("SELECT `solr_field`, `solr_field_settings` FROM islandora_solr_fields WHERE field_type = :fieldType ORDER BY `weight`", array(':fieldType' => $fieldType));
-  $fields = array();
-  foreach ($results as $row) {
-    $settings = unserialize($row->solr_field_settings);
-    $fields[$row->solr_field] = array('label' => $settings['label'],
-                                      'class' => $row->solr_field);
-  }
-  return $fields;
-}
-
