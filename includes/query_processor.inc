@@ -107,8 +107,10 @@ class IslandoraSolrQueryProcessor {
   public function buildQuery($query, $params = array()) {
     // Set internal parameters gathered from the URL but not 'q' and 'page'.
     $this->internalSolrParams = $params;
-    unset($this->internalSolrParams['q']);
-    unset($this->internalSolrParams['page']);
+    if (isset($this->internalSolrParams['q'])) {
+      unset($this->internalSolrParams['q']);
+      unset($this->internalSolrParams['page']);
+    }
 
     // Set Solr type (dismax).
     if (isset($this->internalSolrParams['type']) && ($this->internalSolrParams['type'] == 'dismax' || $this->internalSolrParams['type'] == 'edismax')) {

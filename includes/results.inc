@@ -567,7 +567,12 @@ class IslandoraSolrResults {
     $facet_order = $this->facetFieldArray;
     foreach ($facet_order as $facet_key => $facet_label) {
       $facet_obj = new IslandoraSolrFacets($facet_key);
-      $output .= $facet_obj->getFacet();
+      // Analyze the facet before adding to output... suppress any facets that only contain one item.
+      $facet_output = $facet_obj->getFacet();
+      $facets_count = substr_count($facet_output, '</li>');
+      if ($facets_count > 1 || $facet_obj->facet_type == 'facet_dates') {
+        $output .= $facet_output;
+      }
     }
 
     // As we add additional facets, we're repeatedly URL-encoding old facet
