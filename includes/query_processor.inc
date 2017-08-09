@@ -370,9 +370,14 @@ class IslandoraSolrQueryProcessor {
         foreach ($object_results as $object_index => $object_result) {
           unset($object_results[$object_index]);
           $object_results[$object_index]['solr_doc'] = $object_result;
-          $pid = $object_results[$object_index]['solr_doc']['PID'];
-          $object_results[$object_index]['PID'] = $pid;
-          $object_results[$object_index]['object_url'] = 'islandora/object/' . $object_results[$object_index]['solr_doc']['PID'];
+          if (isset($object_results[$object_index]['solr_doc']['PID'])) {
+            $pid = $object_results[$object_index]['solr_doc']['PID'];
+            $object_results[$object_index]['PID'] = $pid;
+            $object_results[$object_index]['object_url'] = 'islandora/object/' . $object_results[$object_index]['solr_doc']['PID'];
+          }
+          else {
+            $object_results[$object_index]['object_url'] = 'islandora';
+          }
           if (isset($object_result[$content_model_solr_field])) {
             $object_results[$object_index]['content_models'] = $object_result[$content_model_solr_field];
           }
