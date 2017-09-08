@@ -493,6 +493,7 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
 function islandora_solr_advanced_search_form($form, &$form_state) {
   global $_islandora_solr_queryclass;
 
+  $default_term_set = FALSE;
   // 1: Form update using AJAX.
   if (isset($form_state['triggering_element'])) {
 
@@ -596,6 +597,7 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
       '#prefix' => '<div>',
       '#suffix' => '</div>',
     );
+    $default_term_set = isset($value['field']) | $default_term_set;
     $term['field'] = array(
       '#title' => t('Field'),
       '#type' => 'select',
@@ -681,6 +683,15 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     '#type' => 'submit',
     '#value' => t('Search'),
   );
+  // Set the search field default to the first element -- overriding the dc.title
+  // that is set above.
+  if (!$default_term_set) {
+    $keys = array_keys(islandora_solr_get_fields('search_fields'));
+    if (isset($keys[0])) {
+      $form['terms'][0]['field']['#default_value'] = $keys[0];
+    }
+  }
+
   return $form;
 }
 
