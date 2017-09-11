@@ -52,3 +52,12 @@ ul#secondary-display-profiles
 #islandora-solr-advanced-search-form div.form-item-islandora-solr-allow-preserve-filters {
   display: block;
 }
+
+#islandora-solr-advanced-terms div {
+  margin-bottom: 2px !important;
+  margin-top: 2px !important;
+}
+
+#islandora-solr-advanced-terms div:not(.form-item) {
+  margin-bottom: 10px !important;
+}

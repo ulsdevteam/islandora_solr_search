@@ -454,17 +454,16 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
   module_load_include('inc', 'islandora_solr', 'includes/utilities');
   $search_string = islandora_solr_replace_slashes($form_state['values']['islandora_simple_search_query']);
 
-  $query = array('type' => 'dismax');
   $islandora_object = menu_get_object('islandora_object', 2);
   // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
   // This may need to be adjusted - see how URL is formulated to only take one term in the advanced block code.
   $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ?
     'islandora/object/' . $islandora_object->id . '/search_collection' : ISLANDORA_SOLR_SEARCH_PATH;
+  // Treat the simple search like it is an advanced search submission on the catch_all_fields_mt field so
+  // that it can have a subsequent search performed.
+  $search_string = (strstr(":", $search_string)) ? $search_string : 'catch_all_fields_mt:(' . $search_string . ')';
   $form_state['redirect'] = array(
     $redir_url . "/$search_string",
-    array(
-      'query' => $query,
-    ),
   );
 }
 
@@ -537,6 +536,10 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     // Get current query.
     $query = $_islandora_solr_queryclass->solrQuery;
     $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $query);
+    if ((strstr($query, 'RELS_EXT_isMemberOfCollection_uri_ms') <> '') && count($query_explode) == 1) {
+      $query = 'catch_all_fields_mt:';
+      $query_explode = (array)$query;
+    }
 
     // Now, break up the solr query to populate the advanced search form with any remaining matches.
     foreach ($query_explode as $key => $value) {
@@ -597,7 +600,7 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
       '#prefix' => '<div>',
       '#suffix' => '</div>',
     );
-    $default_term_set = isset($value['field']) | $default_term_set;
+    $default_term_set = isset($value['field']); // | $default_term_set;
     $term['field'] = array(
       '#title' => t('Field'),
       '#type' => 'select',
@@ -689,6 +692,13 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     $keys = array_keys(islandora_solr_get_fields('search_fields'));
     if (isset($keys[0])) {
       $form['terms'][0]['field']['#default_value'] = $keys[0];
+      // HACK -- get ready for some stupid code... This is for any ajax call to get 
+      // additional terms.
+      for ($i = 1; $i < 50; $i++) {
+        if (isset($form['terms'][$i]) && isset($form['terms'][$i]['field'])) {
+          $form['terms'][$i]['field']['#default_value'] = $keys[0];
+        }
+      }
     }
   }
 
@@ -789,7 +799,22 @@ function islandora_solr_advanced_search_form_submit($form, &$form_state) {
 
   // Use redirect of /islandora/search for all pages EXCEPT islandora_objects that are collection models.
   list($this_uri, $junk) = explode('?', $_SERVER['REQUEST_URI']);
-  $redir_url = $is_collection_object_page ? (rtrim($this_uri, '/') ? : 'islandora/object/' . $islandora_object->id . '/search_collection') : ISLANDORA_SOLR_SEARCH_PATH;
+  $raw_get_filter = $_GET['f'];
+  $filter_on_collection = FALSE;
+  foreach ($raw_get_filter as $idx => $raw_filter) {
+    $filter_on_collection |= (strstr($raw_filter, 'RELS_EXT_isMemberOfCollection_uri_ms') <> '');
+    if (!is_object($islandora_object)) {
+      if (strstr($raw_filter, 'RELS_EXT_isMemberOfCollection_uri_ms') <> '') {
+        $pid = str_replace(array('RELS_EXT_isMemberOfCollection_uri_ms:', '"', 'info\:fedora\/'), '', $raw_filter);
+        $islandora_object = islandora_object_load($pid);
+      }
+    }    
+  }
+  $is_collection_object_page = (substr($this_uri, 0, 12) == '/collection/') || $filter_on_collection;
+  $redir_url = ISLANDORA_SOLR_SEARCH_PATH;
+  if ($is_collection_object_page) {
+    $filter[] = 'RELS_EXT_isMemberOfCollection_uri_ms:"info\:fedora\/' . $islandora_object->id . '"';
+  }
 
   // Navigate to results page.
   $form_state['redirect'] = array(

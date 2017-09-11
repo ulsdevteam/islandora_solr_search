@@ -402,8 +402,6 @@ class IslandoraSolrResults {
         $attr_x['rel'] = 'nofollow';
         $attr_x['href'] = url($path, array('query' => $query_x));
 
-        $filter = _fix_spaces_in_parenthesis($filter);
-
         // Remove solr fields from breadcrumb value.
         $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $filter);
         $query_implode = array();
@@ -472,14 +470,30 @@ class IslandoraSolrResults {
       $attr_x['rel'] = 'nofollow';
       $attr_x['href'] = url($path_x, array('query' => $query_x));
 
-      $query_value = _fix_spaces_in_parenthesis($query_value);
-
       // Remove solr fields from breadcrumb value.
       $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $query_value);
-      $query_implode = array();
+      $query_implode = $search_breadcrumbs = array();
+
+      $last_href = '/islandora/search/';
+
+      $last_join = '';
       foreach ($query_explode as $value) {
         // Check for first colon to split the string.
         if (strpos($value, ':') != FALSE) {
+          // Set attributes variable for remove link.
+          $attr_x = array();
+          $attr_x['title'] = t('Remove') . ' ' . $value;
+          $attr_x['rel'] = 'nofollow';          
+          $attr_x['href'] = $last_href;
+
+          // Set attributes variable.
+          $attr = array();
+
+          $attr['title'] = $value;
+          $attr['rel'] = 'nofollow';
+          $attr['href'] = $last_href . (trim($last_join) <> '' ? $last_join : '') . $value;
+          $last_href = $attr['href'];
+
           // Split the filter into field and value.
           $value_split = preg_split(ISLANDORA_SOLR_QUERY_FIELD_VALUE_SPLIT_REGEX, $value, 2);
 
@@ -490,25 +504,26 @@ class IslandoraSolrResults {
           $value_split[1] = trim($value_split[1]);
           // Trim brackets.
           $value = str_replace(array('(', ')'), '', $value_split[1]);
+
+          // XXX: We are not using l() because of active classes:
+          // @see http://drupal.org/node/41595
+          // Create link.
+          // Need to suppress the "x" remove link for collections that use this page.
+//          $suppress_remove_link = (strstr($attr['title'], 'Collection:') && !strstr($attr['title'], '*pitt'));
+          $search_breadcrumbs[] = '<a' . drupal_attributes($attr) . '>' . stripslashes(check_plain($value)) . '</a>';
+// we don't want the remove links - it confuses users.
+/*            . (($suppress_remove_link) ? '' : 
+              '<span class="islandora-solr-breadcrumb-super"> <a' . drupal_attributes($attr_x) . '>(' . t('x') . ')</a></span>');*/
         }
-        // No colon is found.
         else {
-          $value = trim($value);
-          // Strip brackets.
-          $value = str_replace(array('(', ')'), '', $value);
+          // No ":" found in value... must be a joining conjunction.
+          $last_join = ' ' . $value . ' ';
         }
-        $query_implode[] = $value;
       }
-      $query_value = implode(" ", $query_implode);
-
-      // XXX: We are not using l() because of active classes:
-      // @see http://drupal.org/node/41595
-      // Create link.
-      // Need to suppress the "x" remove link for collections that use this page.
-      $suppress_remove_link = (strstr($attr['title'], 'Collection:') && !strstr($attr['title'], '*pitt'));
-      $breadcrumb[] = '<a' . drupal_attributes($attr) . '>' . stripslashes(check_plain($query_value)) . '</a>'
-            . (($suppress_remove_link) ? '' : '<span class="islandora-solr-breadcrumb-super"> <a' . drupal_attributes($attr_x) . '>(' . t('x') . ')</a></span>');
-
+      if (count($search_breadcrumbs) > 0) {
+        $search_breadcrumbs = array_reverse($search_breadcrumbs);
+        $breadcrumb = array_merge($breadcrumb, $search_breadcrumbs);
+      }
     }
 
     $breadcrumb[] = l(t('Home'), '<front>', array('attributes' => array('title' => t('Home'))));
@@ -1567,6 +1582,12 @@ class IslandoraSolrFacets {
  * Final link composed like: <a href='{attr['href']}' title='{attr['title']}>$value_arr[1]</a>
  */
 function _replace_solr_fieldname_title(&$value_arr, &$attr, &$attr_x) {
+  if (isset($value_arr[0]) && isset($value_arr[1]) && $value_arr[0] == 'RELS_EXT_isMemberOfCollection_uri_ms') {
+    $pid = str_replace(array('RELS_EXT_isMemberOfCollection_uri_ms:', '"', 'info\:fedora\/'), '', $value_arr[1]);
+    $islandora_object = islandora_object_load($pid);
+    $value_arr[1] = $islandora_object->label;
+  }
+
   $search_fields = _get_solr_settings_fields('search_fields');
   foreach ($search_fields as $solr_field => $search_field_settings) {
     $title_field_map[$solr_field] = $search_field_settings['label'];
@@ -1579,6 +1600,14 @@ function _replace_solr_fieldname_title(&$value_arr, &$attr, &$attr_x) {
       'mods_relatedItem_host_titleInfo_title_ms' => 'Source',
       'mods_typeOfResource_ms' => 'Type',
       'mods_name_creator_namePart_ms' => 'Creator',
+      'mods_originInfo_type_display_dateOther_ms' => 'Date',
+      'dc.source' => 'Source',
+      'mods_name_depositor_namePart_ms' => 'Contributor',
+      'RELS_EXT_hasModel_uri_ms' => 'Type of Object',
+      'mods_typeOfResource_ms' => 'Type of resource',
+      'mods_subject_topic_ms' => 'Subject',
+      'mods_relatedItem_series_titleInfo_title_s' => 'Series',
+      'mods_subject_geographic_ms' => 'Location',
     ));
 
   $field_title = '';
@@ -1614,16 +1643,3 @@ function _replace_solr_fieldname_title(&$value_arr, &$attr, &$attr_x) {
     }
   }
 }
-
-function _fix_spaces_in_parenthesis($filter) {
-  // If filter contains a term that contains a space, replace with "+"
-  $parenthesis_lpos = strpos($filter, "(");
-  $parenthesis_rpos = strpos($filter, ")");
-  if ($parenthesis_lpos > 0 && $parenthesis_lpos < $parenthesis_rpos) {
-    $filter = substr($filter, 0, $parenthesis_lpos) .
-      str_replace(" ", "+", substr($filter, $parenthesis_lpos, $parenthesis_rpos - 1)) .
-      substr($filter, $parenthesis_rpos + 1);
-  }
-  return $filter;
-}
-
