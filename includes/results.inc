@@ -1585,7 +1585,9 @@ function _replace_solr_fieldname_title(&$value_arr, &$attr, &$attr_x) {
   if (isset($value_arr[0]) && isset($value_arr[1]) && $value_arr[0] == 'RELS_EXT_isMemberOfCollection_uri_ms') {
     $pid = str_replace(array('RELS_EXT_isMemberOfCollection_uri_ms:', '"', 'info\:fedora\/'), '', $value_arr[1]);
     $islandora_object = islandora_object_load($pid);
-    $value_arr[1] = $islandora_object->label;
+    if (is_object($islandora_object)) {
+      $value_arr[1] = $islandora_object->label;
+    }
   }
 
   $search_fields = _get_solr_settings_fields('search_fields');
