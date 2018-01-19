@@ -386,6 +386,9 @@ class IslandoraSolrResults {
         if (empty($query_x['f'])) {
           unset($query_x['f']);
         }
+        if (isset($query_x['f']) && is_array($query_x['f']) && $query_x['f'][0] == '') {
+          $query_x['f'] = '';
+        }
 
         // Set attributes variable.
         $attr = array();
