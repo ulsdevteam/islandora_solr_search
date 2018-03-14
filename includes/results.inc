@@ -474,15 +474,16 @@ class IslandoraSolrResults {
       $attr_x['href'] = url($path_x, array('query' => $query_x));
 
       // Remove solr fields from breadcrumb value.
-      $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, $query_value);
+      $impossible_hash = md5(date('c'));
+      $query_explode = preg_split(ISLANDORA_SOLR_QUERY_SPLIT_REGEX, str_replace(" ", $impossible_hash, $query_value));
       $query_implode = $search_breadcrumbs = array();
-
       $last_href = '/islandora/search/';
 
       $last_join = '';
       foreach ($query_explode as $value) {
         // Check for first colon to split the string.
         if (strpos($value, ':') != FALSE) {
+          $value = str_replace($impossible_hash, " ", $value);
           // Set attributes variable for remove link.
           $attr_x = array();
           $attr_x['title'] = t('Remove') . ' ' . $value;
