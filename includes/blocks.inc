@@ -460,8 +460,9 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
   $redir_url = (is_object($islandora_object) && !(array_search('islandora:collectionCModel', $islandora_object->models) === FALSE) ) ?
     'islandora/object/' . $islandora_object->id . '/search_collection' : ISLANDORA_SOLR_SEARCH_PATH;
   // Treat the simple search like it is an advanced search submission on the catch_all_fields_mt field so
-  // that it can have a subsequent search performed.
-  $search_string = (strstr(":", $search_string)) ? $search_string : 'catch_all_fields_mt:(' . $search_string . ')';
+  // that it can have a subsequent search performed. 
+  $search_string = (trim($search_string) && ($search_string <> '()')) ? ((strstr(":", $search_string)) ? $search_string : 'catch_all_fields_mt:(' . $search_string . ')') : 
+    "catch_all_fields_mt:(*)";
   $form_state['redirect'] = array(
     $redir_url . "/$search_string",
   );
