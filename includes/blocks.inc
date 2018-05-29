@@ -518,7 +518,7 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     // First check for _GET params that match a possible search field.
     $solr_search_fields = _get_solr_settings_fields('search_fields');
     $i = 0;
-    $get_filter_params = isset($_GET['f']) ? $_GET['f'] : array();
+    $get_filter_params = (isset($_GET['f']) && is_array($_GET['f'])) ? $_GET['f'] : array();
 
     $added = array();
     foreach ($get_filter_params as $get_filter_param) {

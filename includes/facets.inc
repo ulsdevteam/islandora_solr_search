@@ -28,7 +28,7 @@ function islandora_solr_date_filter_form($form, &$form_state, $elements) {
   // Parameters set in URL.
   $params = isset($_islandora_solr_queryclass->internalSolrParams) ? $_islandora_solr_queryclass->internalSolrParams : array();
   $filter_count = 0;
-  if (isset($params['f'])) {
+  if (isset($params['f']) && is_array($params['f'])) {
     $format = 'Y/m/d';
     foreach ($params['f'] as $key => $filter) {
       if (strpos($filter, $facet_field) === 0) {
