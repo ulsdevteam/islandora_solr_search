@@ -431,7 +431,17 @@ class IslandoraSolrResults {
           $query_implode[] = $value;
         }
         $filter_string = implode(" ", $query_implode);
-
+        // ISLANDORA-109: if the filter_string looks like an object PID value, 
+        // then see if that is an islandora model object - use its label.
+        if (strstr($filter_string, 'info:fedora/islandora:') <> '') {
+          $filter_pid_only = str_replace(
+            array('info:fedora/', '"'), '', $filter_string);
+          $filter_as_object = islandora_object_load($filter_pid_only);
+          if (is_object($filter_as_object) && ($filter_as_object->label <> '')) {
+            $filter_string = 'Model: "' . $filter_as_object->label . '"';
+            $attr['title'] = $filter_string;
+          }
+        }
         // XXX: We are not using l() because of active classes:
         // @see http://drupal.org/node/41595
         // Create link.
