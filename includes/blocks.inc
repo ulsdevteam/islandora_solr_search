@@ -493,7 +493,6 @@ function islandora_solr_simple_search_form_submit($form, &$form_state) {
 function islandora_solr_advanced_search_form($form, &$form_state) {
   global $_islandora_solr_queryclass;
 
-  $default_term_set = FALSE;
   // 1: Form update using AJAX.
   if (isset($form_state['triggering_element'])) {
 
@@ -518,7 +517,7 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     // First check for _GET params that match a possible search field.
     $solr_search_fields = _get_solr_settings_fields('search_fields');
     $i = 0;
-    $get_filter_params = isset($_GET['f']) ? $_GET['f'] : array();
+    $get_filter_params = (isset($_GET['f']) && is_array($_GET['f'])) ? $_GET['f'] : array();
 
     $added = array();
     foreach ($get_filter_params as $get_filter_param) {
@@ -541,7 +540,6 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
       $query = 'catch_all_fields_mt:';
       $query_explode = (array)$query;
     }
-
     // Now, break up the solr query to populate the advanced search form with any remaining matches.
     foreach ($query_explode as $key => $value) {
 
@@ -601,7 +599,6 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
       '#prefix' => '<div>',
       '#suffix' => '</div>',
     );
-    $default_term_set = isset($value['field']); // | $default_term_set;
     $term['field'] = array(
       '#title' => t('Field'),
       '#type' => 'select',
@@ -687,22 +684,6 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     '#type' => 'submit',
     '#value' => t('Search'),
   );
-  // Set the search field default to the first element -- overriding the dc.title
-  // that is set above.
-  if (!$default_term_set) {
-    $keys = array_keys(islandora_solr_get_fields('search_fields'));
-    if (isset($keys[0])) {
-      $form['terms'][0]['field']['#default_value'] = $keys[0];
-      // HACK -- get ready for some stupid code... This is for any ajax call to get 
-      // additional terms.
-      for ($i = 1; $i < 50; $i++) {
-        if (isset($form['terms'][$i]) && isset($form['terms'][$i]['field'])) {
-          $form['terms'][$i]['field']['#default_value'] = $keys[0];
-        }
-      }
-    }
-  }
-
   return $form;
 }
 
