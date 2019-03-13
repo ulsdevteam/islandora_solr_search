@@ -74,7 +74,7 @@ class IslandoraSolrResults {
     $elements['solr_pager'] = theme('pager', array(
       'tags' => NULL,
       'element' => 0,
-      'parameters' => NULL,
+      'parameters' => array(),
       'quantity' => 5,
     ));
 
