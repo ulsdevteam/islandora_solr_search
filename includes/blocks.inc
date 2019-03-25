@@ -106,6 +106,40 @@ function islandora_solr_block_info() {
 }
 
 /**
+ * Implements hook_block_configure().
+ */
+function islandora_solr_block_configure($delta = '') {
+  if ($delta == 'simple') {
+    $form = array();
+    $form['islandora_solr_simple_search_label_title'] = array(
+      '#type' => 'textfield',
+      '#title' => t('Simple Search Label'),
+      '#size' => 30,
+      '#default_value' => variable_get('islandora_solr_simple_search_label_title', 'Search Term'),
+      '#description' => t('Customize label text associated with search input form. Accessibility guidelines recommend whenever possible to explicitly associate label text with form inputs.'),
+      '#required' => TRUE,
+    );
+    $form['islandora_solr_simple_search_label_visibility'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Simple Search Label Visibility'),
+      '#default_value' => variable_get('islandora_solr_simple_search_label_visibility', TRUE),
+      '#description' => t('Display the label alongside the simple search input. If unchecked, label will be visibly hidden but will be kept available for screen-readers.'),
+    );
+    return $form;
+  }
+}
+
+/**
+ * Implements hook_block_save().
+ */
+function islandora_solr_block_save($delta = '', $edit = array()) {
+  if ($delta == 'simple') {
+    variable_set('islandora_solr_simple_search_label_title', $edit['islandora_solr_simple_search_label_title']);
+    variable_set('islandora_solr_simple_search_label_visibility', $edit['islandora_solr_simple_search_label_visibility']);
+  }
+}
+
+/**
  * Implements hook_form_FORM_ID_alter().
  *
  * Currently checks for delta of explore and modifies the form to add custom
@@ -427,10 +461,21 @@ function islandora_solr_simple_search_form($form, &$form_state) {
       ),
     ),
   );
+
+  if (variable_get('islandora_solr_simple_search_label_visibility', TRUE) == FALSE) {
+    $title_visible = 'invisible';
+  }
+  else {
+    $title_visible = 'before';
+  }
+
+  $title_label = variable_get('islandora_solr_simple_search_label_title', 'Search Term');
+
   $form['simple']["islandora_simple_search_query"] = array(
     '#size' => '15',
     '#type' => 'textfield',
-    '#title' => t("Search Term"),
+    '#title' => check_plain($title_label),
+    '#title_display' => $title_visible,
     // @todo Should this be the searched value?
     '#default_value' => '',
   );
@@ -440,7 +485,6 @@ function islandora_solr_simple_search_form($form, &$form_state) {
   );
   return $form;
 }
-
 
 /**
  * Islandora Solr simple search form submit callback.
@@ -579,7 +623,7 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
     $term['field'] = array(
       '#title' => t('Field'),
       '#type' => 'select',
-      '#default_value' => isset($value['field']) ? $value['field'] : 'dc.title',
+      '#default_value' => isset($value['field']) ? $value['field'] : NULL,
       '#options' => islandora_solr_get_fields('search_fields'),
     );
     $term['search'] = array(
@@ -629,6 +673,8 @@ function islandora_solr_advanced_search_form($form, &$form_state) {
           '#type' => 'select',
           '#prefix' => '<div>',
           '#suffix' => '</div>',
+          '#title' => t('Operator'),
+          '#title_display' => 'invisible',
           '#default_value' => isset($value['boolean']) ? $value['boolean'] : 'AND',
           '#options' => array(
             'AND' => 'AND',
@@ -885,8 +931,9 @@ function islandora_solr_sort() {
       $current_sort_order = isset($sort_explode[1]) ? $sort_explode[1] : NULL;
     }
     else {
-      // If no parameters are given, internally solr defaults to 'score desc'
-      // http://wiki.apache.org/solr/CommonQueryParameters#sort
+      // If no parameters are given, internally solr defaults to 'score desc'.
+      // See Common Query Paremeters section:
+      // http://archive.apache.org/dist/lucene/solr/ref-guide/
       $current_sort_term = 'score';
       $current_sort_order = 'desc';
     }

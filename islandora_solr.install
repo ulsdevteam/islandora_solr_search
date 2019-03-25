@@ -60,6 +60,12 @@ function islandora_solr_uninstall() {
     'islandora_solr_search_field_value_separator',
     'islandora_solr_search_truncated_field_value_separator',
     'islandora_solr_collection_result_limit_block_override',
+    'islandora_solr_breadcrumbs_parent_fields',
+    'islandora_solr_breadcrumbs_add_collection_query',
+    'islandora_solr_simple_search_label_visibility',
+    'islandora_solr_simple_search_label_title',
+    'islandora_solr_compound_relationship_field',
+    'islandora_solr_compound_sequence_pattern',
   ));
   array_walk($variables, 'variable_del');
 }
@@ -328,7 +334,6 @@ function islandora_solr_search_settings_variables() {
     'islandora_solr_primary_display',
     'islandora_solr_request_handler',
     'islandora_solr_luke_timeout',
-    'islandora_solr_breadcrumbs_parent_fields',
   );
   return $variables;
 }
