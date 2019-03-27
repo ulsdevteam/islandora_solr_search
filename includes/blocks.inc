@@ -481,7 +481,7 @@ function islandora_solr_simple_search_form($form, &$form_state) {
   );
   $form['simple']['submit'] = array(
     '#type' => 'submit',
-    '#value' => t('search'),
+    '#value' => t('Search'),
   );
   return $form;
 }
