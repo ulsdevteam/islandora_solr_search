@@ -960,7 +960,9 @@ function islandora_solr_sort() {
       }
       $sort_param = $term . ' ' . $order;
 
-      $query = array_merge($params, array('sort' => $sort_param));
+      $query = (is_array($params)) ?
+              array_merge($params, array('sort' => $sort_param)) :
+        array('sort' => $sort_param);
 
       $attributes = array(
         'sort' => array(
